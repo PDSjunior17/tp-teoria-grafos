@@ -1,0 +1,17 @@
+# API GitHub
+requests>=2.31.0
+PyGithub>=2.1.1
+
+# Análise de grafos
+networkx>=3.1
+
+# Manipulação de dados
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Visualização
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Exportação
+python-louvain>=0.16

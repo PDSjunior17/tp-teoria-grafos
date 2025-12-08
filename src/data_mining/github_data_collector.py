@@ -312,6 +312,37 @@ class GitHubDataCollector:
 
 
 def main():
+    """Função principal para executar a coleta"""
+    
+    # EXEMPLO DE CONFIGURACAO DE REPOSITORIO
+    REPO_OWNER = "facebook"  # Exemplo: facebook
+    REPO_NAME = "react"      # Exemplo: react
+    GITHUB_TOKEN = None      # token aqui
+    
+    print("="*60)
+    print("GitHub Data Collector - Teoria de Grafos")
+    print("="*60)
+    print(f"Repositório: {REPO_OWNER}/{REPO_NAME}")
+    print("="*60)
+    
+    collector = GitHubDataCollector(REPO_OWNER, REPO_NAME, GITHUB_TOKEN)
+    
+    # Coletar dados
+    collector.collect_issues_data(max_issues=300)
+    collector.collect_pull_requests_data(max_prs=300)
+    
+    # Salvar dados
+    filename = collector.save_data()
+    
+    # Mostrar estatísticas
+    stats = collector.get_statistics()
+    print("\n=== ESTATÍSTICAS FINAIS ===")
+    for key, value in stats.items():
+        print(f"{key}: {value}")
+    
+    print(f"\nArquivo salvo: {filename}")
+    print("\nPróximo passo: Execute graph_builder.py para construir os grafos!")
+
 
 if __name__ == "__main__":
     main()

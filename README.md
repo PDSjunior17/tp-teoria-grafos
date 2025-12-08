@@ -4,12 +4,12 @@ Análise de repositório GitHub utilizando teoria dos grafos para modelar intera
 
 ## 👥 Grupo
 
-- **Membro 1** - Matrícula XXXXXX
-- **Membro 2** - Matrícula XXXXXX
-- **Membro 3** - Matrícula XXXXXX
-- **Membro 4** - Matrícula XXXXXX
-- **Membro 5** - Matrícula XXXXXX
-- **Membro 6** - Matrícula XXXXXX
+- **Charles Moreira** - Matrícula XXXXXX
+- **Guilherme** - Matrícula XXXXXX
+- **Paulo Dimas** - Matrícula XXXXXX
+- **Pedro** - Matrícula XXXXXX
+- **Talita Justo** - Matrícula XXXXXX
+- **Rafael Henrique** - Matrícula XXXXXX
 
 ## 📊 Repositório Analisado
 

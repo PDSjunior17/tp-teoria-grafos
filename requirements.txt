@@ -2,6 +2,9 @@
 requests>=2.31.0
 PyGithub>=2.1.1
 
+# Segurança - Variáveis de ambiente
+python-dotenv>=1.0.0
+
 # Análise de grafos
 networkx>=3.1
 

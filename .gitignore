@@ -44,3 +44,8 @@ target/
 .DS_Store
 Thumbs.db
 config.py
+
+#Data Graph
+*.csv
+*.gexf
+*.json

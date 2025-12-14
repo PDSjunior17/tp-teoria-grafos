@@ -6,14 +6,14 @@ Análise de repositório GitHub utilizando teoria dos grafos para modelar intera
 
 - **Charles Moreira** - Matrícula XXXXXX
 - **Guilherme Meireles** - Matrícula 501153
-- **Paulo Dimas** - Matrícula XXXXXX
+- **Paulo Dimas** - Matrícula 837643
 - **Pedro** - Matrícula XXXXXX
 - **Talita Justo** - Matrícula XXXXXX
 - **Rafael Henrique** - Matrícula XXXXXX
 
 ## 📊 Repositório Analisado
 
-**[Nome do Repositório](link-github)** - XX.XXX ⭐
+**[next.js](https://github.com/vercel/next.js)** - 136.5k ⭐
 
 ## 📁 Estrutura do Projeto
 ```
@@ -37,7 +37,7 @@ tp-teoria-grafos/
 pip install -r requirements.txt
 
 # Executar mineração
-python src/data_mining/collect_data.py
+python run_etapa1.py
 
 # Executar análises
 python src/analysis/run_analysis.py

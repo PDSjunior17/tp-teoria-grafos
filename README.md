@@ -39,8 +39,8 @@ pip install -r requirements.txt
 # Executar mineração
 python run_etapa1.py
 
-# Executar análises
-python src/analysis/run_analysis.py
+# Executar Dashboard de Análise de Grafos
+python dashboard_pro.py #abra o arquivo dashboard_pro.html no navegador
 ```
 
 ## 🛠️ Tecnologias

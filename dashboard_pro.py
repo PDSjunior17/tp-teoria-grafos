@@ -219,7 +219,7 @@ class ProfessionalDashboard:
 <body>
 
     <header>
-        <h1>🚀 Dashboard de Análise de Grafos</h1>
+        <h1>Dashboard de Análise de Grafos</h1>
         <p>Repositório: <strong>{self.data.get('repository')}</strong> <span class="badge">DADOS REAIS</span></p>
     </header>
 
@@ -407,7 +407,7 @@ class ProfessionalDashboard:
         with open(CONFIG["OUTPUT_FILE"], 'w', encoding='utf-8') as f:
             f.write(html_content)
         
-        print(f"\n🚀 SUCESSO! Dashboard gerado em: {os.path.abspath(CONFIG['OUTPUT_FILE'])}")
+        print(f"\nSUCESSO! Dashboard gerado em: {os.path.abspath(CONFIG['OUTPUT_FILE'])}")
         webbrowser.open(f"file://{os.path.abspath(CONFIG['OUTPUT_FILE'])}")
 
 if __name__ == "__main__":
@@ -418,4 +418,4 @@ if __name__ == "__main__":
         app = ProfessionalDashboard()
         app.generate_html()
     except Exception as e:
-        print(f"\n❌ Erro durante a execução: {e}")
+        print(f"\nErro durante a execução: {e}")

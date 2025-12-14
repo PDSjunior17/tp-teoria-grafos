@@ -48,6 +48,7 @@ javac -encoding UTF-8 graph/*.java
 java graph.Main
 
 ```
+---
 ### Seleção do Grafo
 Ao iniciar o programa, o usuário pode escolher qual conjunto de dados deseja carregar:
 + Comentários
@@ -55,10 +56,12 @@ Ao iniciar o programa, o usuário pode escolher qual conjunto de dados deseja ca
 + Reviews
 + Integrado
 
+---
 ### Seleção da Representação
 + Matriz de Adjacência
 + Lista de Adjacência
 
+---
 ### Operações Disponíveis 
 + Mostrar o grafo
 + Verificar se o grafo é vazio

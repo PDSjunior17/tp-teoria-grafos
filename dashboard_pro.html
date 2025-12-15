@@ -1,0 +1,285 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics de Grafo GitHub - vercel/next.js</title>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #6366f1;
+            --accent: #8b5cf6;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            padding-bottom: 50px;
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            padding: 30px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+            margin-bottom: 30px;
+        }
+        
+        h1 { font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+        .badge { background: rgba(255,255,255,0.2); padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; }
+
+        /* Layout Grid */
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 25px;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.05);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-bottom: 25px;
+        }
+
+        .card h2 { font-size: 1.1rem; color: var(--text-muted); margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .metric-big { font-size: 2.5rem; font-weight: 700; color: var(--primary); }
+
+        /* Sidebar Controls */
+        .sidebar { grid-column: 1; }
+        .main-content { grid-column: 2; }
+
+        .control-group { margin-bottom: 20px; }
+        .control-group label { display: block; margin-bottom: 8px; font-size: 0.9rem; }
+        input[type="range"] { width: 100%; accent-color: var(--primary); }
+
+        /* Network Graph */
+        #network {
+            width: 100%;
+            height: 600px;
+            background: #111;
+            border-radius: 12px;
+            border: 1px solid #333;
+        }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        footer { text-align: center; color: var(--text-muted); margin-top: 50px; font-size: 0.8rem; }
+
+        @media (max-width: 1000px) {
+            .container { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dashboard de Análise de Grafos</h1>
+        <p>Repositório: <strong>vercel/next.js</strong> <span class="badge">DADOS REAIS</span></p>
+    </header>
+
+    <div class="container">
+        <aside class="sidebar">
+            <div class="card">
+                <h2>Resumo Global</h2>
+                <div style="margin-bottom: 15px;">
+                    <div class="metric-big">293</div>
+                    <div style="color: var(--text-muted)">Nós (Usuários)</div>
+                </div>
+                <div>
+                    <div class="metric-big">1484</div>
+                    <div style="color: var(--text-muted)">Arestas (Interações)</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h2>🔧 Filtros de Visualização</h2>
+                <div class="control-group">
+                    <label>Física do Grafo (Estabilidade)</label>
+                    <input type="checkbox" id="physicsToggle" checked onchange="togglePhysics()"> Ativar Simulação
+                </div>
+                <div class="control-group">
+                    <label>Filtrar por Peso Mínimo: <span id="weightVal">0</span></label>
+                    <input type="range" id="weightFilter" min="0" max="10" value="0" step="1" oninput="filterNetwork()">
+                </div>
+                <p style="font-size: 0.8rem; color: #666;">Use os filtros para limpar o grafo e focar nas conexões mais fortes.</p>
+            </div>
+
+            <div class="card">
+                <h2>📊 Distribuição</h2>
+                <canvas id="typeChart"></canvas>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="card">
+                <h2>🕸️ Rede de Colaboração (Top 100 Hubs)</h2>
+                <div id="network"></div>
+            </div>
+
+            <div class="charts-grid">
+                <div class="card">
+                    <h2>🏆 Top 10 Mais Ativos (Out-Degree)</h2>
+                    <canvas id="activeChart"></canvas>
+                </div>
+                <div class="card">
+                    <h2>⭐ Top 10 Mais Populares (In-Degree)</h2>
+                    <canvas id="popularChart"></canvas>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <footer>
+        Gerado automaticamente por Python Graph Analysis Tool • 14/12/2025 19:28
+    </footer>
+
+    <script>
+        // --- DADOS INJETADOS PELO PYTHON ---
+        const rawNodes = [{"id": "mischnic", "label": "mischnic", "value": 408, "title": "<b>mischnic</b><br>Grau Total: 408<br>Role: Colaborador", "group": "hub"}, {"id": "sokra", "label": "sokra", "value": 298, "title": "<b>sokra</b><br>Grau Total: 298<br>Role: Colaborador", "group": "hub"}, {"id": "vercel[bot]", "label": "vercel[bot]", "value": 235, "title": "<b>vercel[bot]</b><br>Grau Total: 235<br>Role: Ativo (Gera demanda)", "group": "hub"}, {"id": "bgw", "label": "bgw", "value": 164, "title": "<b>bgw</b><br>Grau Total: 164<br>Role: Colaborador", "group": "hub"}, {"id": "icyJoseph", "label": "icyJoseph", "value": 156, "title": "<b>icyJoseph</b><br>Grau Total: 156<br>Role: Ativo (Gera demanda)", "group": "hub"}, {"id": "lukesandberg", "label": "lukesandberg", "value": 144, "title": "<b>lukesandberg</b><br>Grau Total: 144<br>Role: Colaborador", "group": "hub"}, {"id": "eps1lon", "label": "eps1lon", "value": 142, "title": "<b>eps1lon</b><br>Grau Total: 142<br>Role: Colaborador", "group": "hub"}, {"id": "unstubbable", "label": "unstubbable", "value": 122, "title": "<b>unstubbable</b><br>Grau Total: 122<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "github-actions[bot]", "label": "github-actions[bot]", "value": 97, "title": "<b>github-actions[bot]</b><br>Grau Total: 97<br>Role: Ativo (Gera demanda)", "group": "hub"}, {"id": "graphite-app[bot]", "label": "graphite-app[bot]", "value": 78, "title": "<b>graphite-app[bot]</b><br>Grau Total: 78<br>Role: Ativo (Gera demanda)", "group": "hub"}, {"id": "vercel-release-bot", "label": "vercel-release-bot", "value": 68, "title": "<b>vercel-release-bot</b><br>Grau Total: 68<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "timneutkens", "label": "timneutkens", "value": 58, "title": "<b>timneutkens</b><br>Grau Total: 58<br>Role: Ativo (Gera demanda)", "group": "hub"}, {"id": "huozhi", "label": "huozhi", "value": 51, "title": "<b>huozhi</b><br>Grau Total: 51<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "ijjk", "label": "ijjk", "value": 50, "title": "<b>ijjk</b><br>Grau Total: 50<br>Role: Colaborador", "group": "hub"}, {"id": "ztanner", "label": "ztanner", "value": 45, "title": "<b>ztanner</b><br>Grau Total: 45<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "lubieowoce", "label": "lubieowoce", "value": 40, "title": "<b>lubieowoce</b><br>Grau Total: 40<br>Role: Colaborador", "group": "hub"}, {"id": "nextjs-bot", "label": "nextjs-bot", "value": 37, "title": "<b>nextjs-bot</b><br>Grau Total: 37<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "wbinnssmith", "label": "wbinnssmith", "value": 35, "title": "<b>wbinnssmith</b><br>Grau Total: 35<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "devjiwonchoi", "label": "devjiwonchoi", "value": 31, "title": "<b>devjiwonchoi</b><br>Grau Total: 31<br>Role: Colaborador", "group": "hub"}, {"id": "gaearon", "label": "gaearon", "value": 28, "title": "<b>gaearon</b><br>Grau Total: 28<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "Rezakarimzadeh98", "label": "Rezakarimzadeh98", "value": 28, "title": "<b>Rezakarimzadeh98</b><br>Grau Total: 28<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "gaojude", "label": "gaojude", "value": 28, "title": "<b>gaojude</b><br>Grau Total: 28<br>Role: Refer\u00eancia (Resolve demanda)", "group": "hub"}, {"id": "xusd320", "label": "xusd320", "value": 19, "title": "<b>xusd320</b><br>Grau Total: 19<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "rosbitskyy", "label": "rosbitskyy", "value": 18, "title": "<b>rosbitskyy</b><br>Grau Total: 18<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "gnoff", "label": "gnoff", "value": 18, "title": "<b>gnoff</b><br>Grau Total: 18<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "wyattjoh", "label": "wyattjoh", "value": 17, "title": "<b>wyattjoh</b><br>Grau Total: 17<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "molebox", "label": "molebox", "value": 14, "title": "<b>molebox</b><br>Grau Total: 14<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "acdlite", "label": "acdlite", "value": 13, "title": "<b>acdlite</b><br>Grau Total: 13<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "samselikoff", "label": "samselikoff", "value": 12, "title": "<b>samselikoff</b><br>Grau Total: 12<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "copilot-pull-request-reviewer[bot]", "label": "copilot-pull-request-reviewer[bot]", "value": 11, "title": "<b>copilot-pull-request-reviewer[bot]</b><br>Grau Total: 11<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "ismaelrumzan", "label": "ismaelrumzan", "value": 10, "title": "<b>ismaelrumzan</b><br>Grau Total: 10<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "Haaxor1689", "label": "Haaxor1689", "value": 9, "title": "<b>Haaxor1689</b><br>Grau Total: 9<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "karlhorky", "label": "karlhorky", "value": 9, "title": "<b>karlhorky</b><br>Grau Total: 9<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "willardcsoriano", "label": "willardcsoriano", "value": 9, "title": "<b>willardcsoriano</b><br>Grau Total: 9<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "CosmicJesterX", "label": "CosmicJesterX", "value": 9, "title": "<b>CosmicJesterX</b><br>Grau Total: 9<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "dofaromg", "label": "dofaromg", "value": 9, "title": "<b>dofaromg</b><br>Grau Total: 9<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "01026551290", "label": "01026551290", "value": 8, "title": "<b>01026551290</b><br>Grau Total: 8<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "that-one-arab", "label": "that-one-arab", "value": 8, "title": "<b>that-one-arab</b><br>Grau Total: 8<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "styfle", "label": "styfle", "value": 8, "title": "<b>styfle</b><br>Grau Total: 8<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "zhiyanzhaijie", "label": "zhiyanzhaijie", "value": 7, "title": "<b>zhiyanzhaijie</b><br>Grau Total: 7<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "khuezy", "label": "khuezy", "value": 7, "title": "<b>khuezy</b><br>Grau Total: 7<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "feedthejim", "label": "feedthejim", "value": 7, "title": "<b>feedthejim</b><br>Grau Total: 7<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "KaziMahbuburRahman", "label": "KaziMahbuburRahman", "value": 7, "title": "<b>KaziMahbuburRahman</b><br>Grau Total: 7<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "Typhon0130", "label": "Typhon0130", "value": 6, "title": "<b>Typhon0130</b><br>Grau Total: 6<br>Role: Colaborador", "group": "contributor"}, {"id": "SorooshGb", "label": "SorooshGb", "value": 6, "title": "<b>SorooshGb</b><br>Grau Total: 6<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "yerayvillamarin", "label": "yerayvillamarin", "value": 6, "title": "<b>yerayvillamarin</b><br>Grau Total: 6<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "H01001000", "label": "H01001000", "value": 6, "title": "<b>H01001000</b><br>Grau Total: 6<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "Musar98", "label": "Musar98", "value": 5, "title": "<b>Musar98</b><br>Grau Total: 5<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "brunorzn", "label": "brunorzn", "value": 5, "title": "<b>brunorzn</b><br>Grau Total: 5<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "bennajah", "label": "bennajah", "value": 5, "title": "<b>bennajah</b><br>Grau Total: 5<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "allenzhou101", "label": "allenzhou101", "value": 5, "title": "<b>allenzhou101</b><br>Grau Total: 5<br>Role: Colaborador", "group": "contributor"}, {"id": "kdy1", "label": "kdy1", "value": 5, "title": "<b>kdy1</b><br>Grau Total: 5<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "shuding", "label": "shuding", "value": 5, "title": "<b>shuding</b><br>Grau Total: 5<br>Role: Colaborador", "group": "contributor"}, {"id": "jokokoloko", "label": "jokokoloko", "value": 5, "title": "<b>jokokoloko</b><br>Grau Total: 5<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "ryota-murakami", "label": "ryota-murakami", "value": 4, "title": "<b>ryota-murakami</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "DeveloperViraj", "label": "DeveloperViraj", "value": 4, "title": "<b>DeveloperViraj</b><br>Grau Total: 4<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "md186", "label": "md186", "value": 4, "title": "<b>md186</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "besh", "label": "besh", "value": 4, "title": "<b>besh</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "thernstig", "label": "thernstig", "value": 4, "title": "<b>thernstig</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "amoore108", "label": "amoore108", "value": 4, "title": "<b>amoore108</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "nooraldarraji", "label": "nooraldarraji", "value": 4, "title": "<b>nooraldarraji</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "nexxss-dev", "label": "nexxss-dev", "value": 4, "title": "<b>nexxss-dev</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "delbaoliveira", "label": "delbaoliveira", "value": 4, "title": "<b>delbaoliveira</b><br>Grau Total: 4<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "haydenbleasel", "label": "haydenbleasel", "value": 4, "title": "<b>haydenbleasel</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "pieh", "label": "pieh", "value": 4, "title": "<b>pieh</b><br>Grau Total: 4<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "dijonmusters", "label": "dijonmusters", "value": 4, "title": "<b>dijonmusters</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "SukkaW", "label": "SukkaW", "value": 4, "title": "<b>SukkaW</b><br>Grau Total: 4<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "artemzhdev", "label": "artemzhdev", "value": 3, "title": "<b>artemzhdev</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "maxscn", "label": "maxscn", "value": 3, "title": "<b>maxscn</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "catosaurusrex2003", "label": "catosaurusrex2003", "value": 3, "title": "<b>catosaurusrex2003</b><br>Grau Total: 3<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "rindev0901", "label": "rindev0901", "value": 3, "title": "<b>rindev0901</b><br>Grau Total: 3<br>Role: Colaborador", "group": "contributor"}, {"id": "bgub", "label": "bgub", "value": 3, "title": "<b>bgub</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "madatbay", "label": "madatbay", "value": 3, "title": "<b>madatbay</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "sgb-io", "label": "sgb-io", "value": 3, "title": "<b>sgb-io</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "albertocubeddu", "label": "albertocubeddu", "value": 3, "title": "<b>albertocubeddu</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "Ssword-dev", "label": "Ssword-dev", "value": 3, "title": "<b>Ssword-dev</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "delasy", "label": "delasy", "value": 3, "title": "<b>delasy</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "damianfrizzi", "label": "damianfrizzi", "value": 3, "title": "<b>damianfrizzi</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "vanruch", "label": "vanruch", "value": 3, "title": "<b>vanruch</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "aulonm", "label": "aulonm", "value": 3, "title": "<b>aulonm</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "jsdev-robin", "label": "jsdev-robin", "value": 3, "title": "<b>jsdev-robin</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "remi-k-work", "label": "remi-k-work", "value": 3, "title": "<b>remi-k-work</b><br>Grau Total: 3<br>Role: Colaborador", "group": "contributor"}, {"id": "tats-u", "label": "tats-u", "value": 3, "title": "<b>tats-u</b><br>Grau Total: 3<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "Caesar-APAX", "label": "Caesar-APAX", "value": 3, "title": "<b>Caesar-APAX</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "maltekuehl", "label": "maltekuehl", "value": 3, "title": "<b>maltekuehl</b><br>Grau Total: 3<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "nmoreaud", "label": "nmoreaud", "value": 3, "title": "<b>nmoreaud</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "zaki-yama", "label": "zaki-yama", "value": 3, "title": "<b>zaki-yama</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "muhammadsyaddad", "label": "muhammadsyaddad", "value": 3, "title": "<b>muhammadsyaddad</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "chatgpt-codex-connector[bot]", "label": "chatgpt-codex-connector[bot]", "value": 3, "title": "<b>chatgpt-codex-connector[bot]</b><br>Grau Total: 3<br>Role: Ativo (Gera demanda)", "group": "contributor"}, {"id": "jhuleatt", "label": "jhuleatt", "value": 3, "title": "<b>jhuleatt</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "danpeleg4", "label": "danpeleg4", "value": 3, "title": "<b>danpeleg4</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "rajnish93", "label": "rajnish93", "value": 3, "title": "<b>rajnish93</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "pyrytakala", "label": "pyrytakala", "value": 3, "title": "<b>pyrytakala</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "hamidreza-nateghi", "label": "hamidreza-nateghi", "value": 3, "title": "<b>hamidreza-nateghi</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "sequencerr", "label": "sequencerr", "value": 3, "title": "<b>sequencerr</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "timeyoutakeit", "label": "timeyoutakeit", "value": 3, "title": "<b>timeyoutakeit</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "Strernd", "label": "Strernd", "value": 3, "title": "<b>Strernd</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "mrjatinduggal", "label": "mrjatinduggal", "value": 3, "title": "<b>mrjatinduggal</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "georgesfarah", "label": "georgesfarah", "value": 3, "title": "<b>georgesfarah</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}, {"id": "officialrajdeepsingh", "label": "officialrajdeepsingh", "value": 3, "title": "<b>officialrajdeepsingh</b><br>Grau Total: 3<br>Role: Refer\u00eancia (Resolve demanda)", "group": "contributor"}];
+        const rawEdges = [{"from": "icyJoseph", "to": "artemzhdev", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "01026551290", "value": 16, "title": "Peso: 16"}, {"from": "unstubbable", "to": "gaearon", "value": 4, "title": "Peso: 4"}, {"from": "icyJoseph", "to": "maxscn", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "Typhon0130", "value": 8, "title": "Peso: 8"}, {"from": "github-actions[bot]", "to": "ryota-murakami", "value": 8, "title": "Peso: 8"}, {"from": "catosaurusrex2003", "to": "Haaxor1689", "value": 3, "title": "Peso: 3"}, {"from": "mischnic", "to": "Haaxor1689", "value": 5, "title": "Peso: 5"}, {"from": "DeveloperViraj", "to": "Musar98", "value": 1, "title": "Peso: 1"}, {"from": "Typhon0130", "to": "Musar98", "value": 2, "title": "Peso: 2"}, {"from": "icyJoseph", "to": "Musar98", "value": 1, "title": "Peso: 1"}, {"from": "icyJoseph", "to": "rindev0901", "value": 1, "title": "Peso: 1"}, {"from": "bgw", "to": "bgub", "value": 2, "title": "Peso: 2"}, {"from": "mischnic", "to": "bgub", "value": 1, "title": "Peso: 1"}, {"from": "icyJoseph", "to": "madatbay", "value": 5, "title": "Peso: 5"}, {"from": "github-actions[bot]", "to": "sgb-io", "value": 4, "title": "Peso: 4"}, {"from": "mischnic", "to": "sgb-io", "value": 1, "title": "Peso: 1"}, {"from": "icyJoseph", "to": "albertocubeddu", "value": 3, "title": "Peso: 3"}, {"from": "brunorzn", "to": "gaearon", "value": 5, "title": "Peso: 5"}, {"from": "samselikoff", "to": "gaearon", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "Ssword-dev", "value": 3, "title": "Peso: 3"}, {"from": "icyJoseph", "to": "md186", "value": 6, "title": "Peso: 6"}, {"from": "icyJoseph", "to": "gaearon", "value": 23, "title": "Peso: 23"}, {"from": "icyJoseph", "to": "delasy", "value": 2, "title": "Peso: 2"}, {"from": "lubieowoce", "to": "gaearon", "value": 5, "title": "Peso: 5"}, {"from": "rosbitskyy", "to": "damianfrizzi", "value": 1, "title": "Peso: 1"}, {"from": "icyJoseph", "to": "SorooshGb", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "besh", "value": 4, "title": "Peso: 4"}, {"from": "github-actions[bot]", "to": "vanruch", "value": 4, "title": "Peso: 4"}, {"from": "mischnic", "to": "aulonm", "value": 4, "title": "Peso: 4"}, {"from": "icyJoseph", "to": "jsdev-robin", "value": 2, "title": "Peso: 2"}, {"from": "rosbitskyy", "to": "remi-k-work", "value": 1, "title": "Peso: 1"}, {"from": "tats-u", "to": "karlhorky", "value": 3, "title": "Peso: 3"}, {"from": "mischnic", "to": "karlhorky", "value": 3, "title": "Peso: 3"}, {"from": "Rezakarimzadeh98", "to": "karlhorky", "value": 1, "title": "Peso: 1"}, {"from": "rosbitskyy", "to": "karlhorky", "value": 1, "title": "Peso: 1"}, {"from": "icyJoseph", "to": "that-one-arab", "value": 32, "title": "Peso: 32"}, {"from": "rosbitskyy", "to": "thernstig", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "thernstig", "value": 4, "title": "Peso: 4"}, {"from": "icyJoseph", "to": "yerayvillamarin", "value": 3, "title": "Peso: 3"}, {"from": "github-actions[bot]", "to": "yerayvillamarin", "value": 4, "title": "Peso: 4"}, {"from": "github-actions[bot]", "to": "zhiyanzhaijie", "value": 5, "title": "Peso: 5"}, {"from": "mischnic", "to": "Caesar-APAX", "value": 4, "title": "Peso: 4"}, {"from": "rosbitskyy", "to": "Caesar-APAX", "value": 1, "title": "Peso: 1"}, {"from": "maltekuehl", "to": "khuezy", "value": 3, "title": "Peso: 3"}, {"from": "rindev0901", "to": "khuezy", "value": 1, "title": "Peso: 1"}, {"from": "remi-k-work", "to": "khuezy", "value": 2, "title": "Peso: 2"}, {"from": "icyJoseph", "to": "nmoreaud", "value": 1, "title": "Peso: 1"}, {"from": "mischnic", "to": "nmoreaud", "value": 1, "title": "Peso: 1"}, {"from": "rosbitskyy", "to": "amoore108", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "amoore108", "value": 4, "title": "Peso: 4"}, {"from": "DeveloperViraj", "to": "zaki-yama", "value": 2, "title": "Peso: 2"}, {"from": "icyJoseph", "to": "zaki-yama", "value": 1, "title": "Peso: 1"}, {"from": "gaojude", "to": "nooraldarraji", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "nooraldarraji", "value": 4, "title": "Peso: 4"}, {"from": "icyJoseph", "to": "bennajah", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "bennajah", "value": 5, "title": "Peso: 5"}, {"from": "github-actions[bot]", "to": "nexxss-dev", "value": 8, "title": "Peso: 8"}, {"from": "icyJoseph", "to": "willardcsoriano", "value": 1, "title": "Peso: 1"}, {"from": "github-actions[bot]", "to": "willardcsoriano", "value": 6, "title": "Peso: 6"}, {"from": "mischnic", "to": "besh", "value": 3, "title": "Peso: 3"}, {"from": "icyJoseph", "to": "zhiyanzhaijie", "value": 24, "title": "Peso: 24"}, {"from": "lubieowoce", "to": "willardcsoriano", "value": 3, "title": "Peso: 3"}, {"from": "unstubbable", "to": "icyJoseph", "value": 10, "title": "Peso: 10"}, {"from": "copilot-pull-request-reviewer[bot]", "to": "muhammadsyaddad", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "muhammadsyaddad", "value": 11, "title": "Peso: 11"}, {"from": "bgw", "to": "ijjk", "value": 11, "title": "Peso: 11"}, {"from": "mischnic", "to": "bgw", "value": 132, "title": "Peso: 132"}, {"from": "timneutkens", "to": "mischnic", "value": 170, "title": "Peso: 170"}, {"from": "vercel[bot]", "to": "mischnic", "value": 170, "title": "Peso: 170"}, {"from": "sokra", "to": "mischnic", "value": 416, "title": "Peso: 416"}, {"from": "graphite-app[bot]", "to": "mischnic", "value": 60, "title": "Peso: 60"}, {"from": "mischnic", "to": "unstubbable", "value": 174, "title": "Peso: 174"}, {"from": "mischnic", "to": "sokra", "value": 441, "title": "Peso: 441"}, {"from": "eps1lon", "to": "nextjs-bot", "value": 216, "title": "Peso: 216"}, {"from": "vercel[bot]", "to": "nextjs-bot", "value": 10, "title": "Peso: 10"}, {"from": "ijjk", "to": "styfle", "value": 11, "title": "Peso: 11"}, {"from": "ijjk", "to": "jhuleatt", "value": 21, "title": "Peso: 21"}, {"from": "mischnic", "to": "eps1lon", "value": 22, "title": "Peso: 22"}, {"from": "icyJoseph", "to": "eps1lon", "value": 37, "title": "Peso: 37"}, {"from": "unstubbable", "to": "huozhi", "value": 11, "title": "Peso: 11"}, {"from": "devjiwonchoi", "to": "huozhi", "value": 22, "title": "Peso: 22"}, {"from": "eps1lon", "to": "icyJoseph", "value": 27, "title": "Peso: 27"}, {"from": "lukesandberg", "to": "mischnic", "value": 142, "title": "Peso: 142"}, {"from": "bgw", "to": "vercel-release-bot", "value": 362, "title": "Peso: 362"}, {"from": "molebox", "to": "icyJoseph", "value": 74, "title": "Peso: 74"}, {"from": "graphite-app[bot]", "to": "ztanner", "value": 10, "title": "Peso: 10"}, {"from": "ijjk", "to": "ztanner", "value": 55, "title": "Peso: 55"}, {"from": "vercel[bot]", "to": "ztanner", "value": 10, "title": "Peso: 10"}, {"from": "icyJoseph", "to": "danpeleg4", "value": 21, "title": "Peso: 21"}, {"from": "lukesandberg", "to": "sokra", "value": 53, "title": "Peso: 53"}, {"from": "vercel[bot]", "to": "sokra", "value": 140, "title": "Peso: 140"}, {"from": "graphite-app[bot]", "to": "huozhi", "value": 15, "title": "Peso: 15"}, {"from": "vercel[bot]", "to": "huozhi", "value": 55, "title": "Peso: 55"}, {"from": "lubieowoce", "to": "unstubbable", "value": 58, "title": "Peso: 58"}, {"from": "graphite-app[bot]", "to": "bgw", "value": 10, "title": "Peso: 10"}, {"from": "sokra", "to": "bgw", "value": 122, "title": "Peso: 122"}, {"from": "vercel[bot]", "to": "acdlite", "value": 35, "title": "Peso: 35"}, {"from": "vercel[bot]", "to": "lukesandberg", "value": 95, "title": "Peso: 95"}, {"from": "mischnic", "to": "lukesandberg", "value": 117, "title": "Peso: 117"}, {"from": "eps1lon", "to": "mischnic", "value": 48, "title": "Peso: 48"}, {"from": "bgw", "to": "mischnic", "value": 88, "title": "Peso: 88"}, {"from": "vercel[bot]", "to": "devjiwonchoi", "value": 10, "title": "Peso: 10"}, {"from": "graphite-app[bot]", "to": "devjiwonchoi", "value": 10, "title": "Peso: 10"}, {"from": "timneutkens", "to": "devjiwonchoi", "value": 22, "title": "Peso: 22"}, {"from": "gaojude", "to": "mischnic", "value": 11, "title": "Peso: 11"}, {"from": "ztanner", "to": "eps1lon", "value": 22, "title": "Peso: 22"}, {"from": "ijjk", "to": "eps1lon", "value": 33, "title": "Peso: 33"}, {"from": "graphite-app[bot]", "to": "rosbitskyy", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "rosbitskyy", "value": 5, "title": "Peso: 5"}, {"from": "mischnic", "to": "huozhi", "value": 31, "title": "Peso: 31"}, {"from": "vercel[bot]", "to": "eps1lon", "value": 105, "title": "Peso: 105"}, {"from": "unstubbable", "to": "eps1lon", "value": 88, "title": "Peso: 88"}, {"from": "unstubbable", "to": "lubieowoce", "value": 49, "title": "Peso: 49"}, {"from": "sokra", "to": "devjiwonchoi", "value": 21, "title": "Peso: 21"}, {"from": "sokra", "to": "lukesandberg", "value": 163, "title": "Peso: 163"}, {"from": "huozhi", "to": "ztanner", "value": 16, "title": "Peso: 16"}, {"from": "sokra", "to": "timneutkens", "value": 22, "title": "Peso: 22"}, {"from": "vercel[bot]", "to": "rajnish93", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "bgw", "value": 25, "title": "Peso: 25"}, {"from": "bgw", "to": "lukesandberg", "value": 38, "title": "Peso: 38"}, {"from": "graphite-app[bot]", "to": "rajnish93", "value": 10, "title": "Peso: 10"}, {"from": "ijjk", "to": "huozhi", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "lubieowoce", "value": 35, "title": "Peso: 35"}, {"from": "ismaelrumzan", "to": "allenzhou101", "value": 11, "title": "Peso: 11"}, {"from": "ztanner", "to": "ijjk", "value": 22, "title": "Peso: 22"}, {"from": "mischnic", "to": "pyrytakala", "value": 21, "title": "Peso: 21"}, {"from": "delbaoliveira", "to": "icyJoseph", "value": 10, "title": "Peso: 10"}, {"from": "samselikoff", "to": "icyJoseph", "value": 35, "title": "Peso: 35"}, {"from": "mischnic", "to": "kdy1", "value": 31, "title": "Peso: 31"}, {"from": "mischnic", "to": "vercel-release-bot", "value": 21, "title": "Peso: 21"}, {"from": "graphite-app[bot]", "to": "lukesandberg", "value": 30, "title": "Peso: 30"}, {"from": "lukesandberg", "to": "huozhi", "value": 16, "title": "Peso: 16"}, {"from": "ismaelrumzan", "to": "icyJoseph", "value": 42, "title": "Peso: 42"}, {"from": "unstubbable", "to": "mischnic", "value": 10, "title": "Peso: 10"}, {"from": "vercel[bot]", "to": "unstubbable", "value": 30, "title": "Peso: 30"}, {"from": "eps1lon", "to": "unstubbable", "value": 113, "title": "Peso: 113"}, {"from": "graphite-app[bot]", "to": "sokra", "value": 40, "title": "Peso: 40"}, {"from": "graphite-app[bot]", "to": "gaojude", "value": 10, "title": "Peso: 10"}, {"from": "huozhi", "to": "gaojude", "value": 48, "title": "Peso: 48"}, {"from": "styfle", "to": "gaojude", "value": 11, "title": "Peso: 11"}, {"from": "graphite-app[bot]", "to": "vercel-release-bot", "value": 30, "title": "Peso: 30"}, {"from": "sokra", "to": "styfle", "value": 21, "title": "Peso: 21"}, {"from": "vercel[bot]", "to": "vanruch", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "DeveloperViraj", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "haydenbleasel", "value": 20, "title": "Peso: 20"}, {"from": "copilot-pull-request-reviewer[bot]", "to": "Rezakarimzadeh98", "value": 35, "title": "Peso: 35"}, {"from": "vercel[bot]", "to": "Rezakarimzadeh98", "value": 55, "title": "Peso: 55"}, {"from": "graphite-app[bot]", "to": "Rezakarimzadeh98", "value": 15, "title": "Peso: 15"}, {"from": "gaojude", "to": "acdlite", "value": 11, "title": "Peso: 11"}, {"from": "ztanner", "to": "acdlite", "value": 11, "title": "Peso: 11"}, {"from": "vercel[bot]", "to": "ijjk", "value": 25, "title": "Peso: 25"}, {"from": "pieh", "to": "ijjk", "value": 20, "title": "Peso: 20"}, {"from": "vercel[bot]", "to": "icyJoseph", "value": 25, "title": "Peso: 25"}, {"from": "sokra", "to": "ztanner", "value": 11, "title": "Peso: 11"}, {"from": "devjiwonchoi", "to": "eps1lon", "value": 33, "title": "Peso: 33"}, {"from": "delbaoliveira", "to": "feedthejim", "value": 11, "title": "Peso: 11"}, {"from": "gnoff", "to": "ztanner", "value": 55, "title": "Peso: 55"}, {"from": "bgw", "to": "sokra", "value": 77, "title": "Peso: 77"}, {"from": "icyJoseph", "to": "bgw", "value": 11, "title": "Peso: 11"}, {"from": "vercel[bot]", "to": "CosmicJesterX", "value": 5, "title": "Peso: 5"}, {"from": "gnoff", "to": "lubieowoce", "value": 21, "title": "Peso: 21"}, {"from": "graphite-app[bot]", "to": "eps1lon", "value": 20, "title": "Peso: 20"}, {"from": "timneutkens", "to": "eps1lon", "value": 11, "title": "Peso: 11"}, {"from": "CosmicJesterX", "to": "unstubbable", "value": 22, "title": "Peso: 22"}, {"from": "eps1lon", "to": "devjiwonchoi", "value": 21, "title": "Peso: 21"}, {"from": "shuding", "to": "huozhi", "value": 11, "title": "Peso: 11"}, {"from": "vercel[bot]", "to": "xusd320", "value": 45, "title": "Peso: 45"}, {"from": "graphite-app[bot]", "to": "xusd320", "value": 10, "title": "Peso: 10"}, {"from": "sokra", "to": "xusd320", "value": 25, "title": "Peso: 25"}, {"from": "CosmicJesterX", "to": "lukesandberg", "value": 22, "title": "Peso: 22"}, {"from": "lukesandberg", "to": "bgw", "value": 42, "title": "Peso: 42"}, {"from": "lukesandberg", "to": "wbinnssmith", "value": 32, "title": "Peso: 32"}, {"from": "sokra", "to": "wbinnssmith", "value": 42, "title": "Peso: 42"}, {"from": "mischnic", "to": "devjiwonchoi", "value": 26, "title": "Peso: 26"}, {"from": "vercel[bot]", "to": "jokokoloko", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "jokokoloko", "value": 26, "title": "Peso: 26"}, {"from": "icyJoseph", "to": "KaziMahbuburRahman", "value": 41, "title": "Peso: 41"}, {"from": "icyJoseph", "to": "hamidreza-nateghi", "value": 21, "title": "Peso: 21"}, {"from": "copilot-pull-request-reviewer[bot]", "to": "dofaromg", "value": 5, "title": "Peso: 5"}, {"from": "chatgpt-codex-connector[bot]", "to": "dofaromg", "value": 10, "title": "Peso: 10"}, {"from": "graphite-app[bot]", "to": "dofaromg", "value": 10, "title": "Peso: 10"}, {"from": "vercel[bot]", "to": "dofaromg", "value": 15, "title": "Peso: 15"}, {"from": "unstubbable", "to": "ztanner", "value": 11, "title": "Peso: 11"}, {"from": "unstubbable", "to": "nextjs-bot", "value": 21, "title": "Peso: 21"}, {"from": "ztanner", "to": "unstubbable", "value": 11, "title": "Peso: 11"}, {"from": "eps1lon", "to": "gaojude", "value": 11, "title": "Peso: 11"}, {"from": "bgw", "to": "xusd320", "value": 21, "title": "Peso: 21"}, {"from": "ijjk", "to": "dijonmusters", "value": 26, "title": "Peso: 26"}, {"from": "feedthejim", "to": "ijjk", "value": 11, "title": "Peso: 11"}, {"from": "wyattjoh", "to": "ijjk", "value": 11, "title": "Peso: 11"}, {"from": "ijjk", "to": "wyattjoh", "value": 11, "title": "Peso: 11"}, {"from": "icyJoseph", "to": "sequencerr", "value": 21, "title": "Peso: 21"}, {"from": "sokra", "to": "lubieowoce", "value": 10, "title": "Peso: 10"}, {"from": "graphite-app[bot]", "to": "lubieowoce", "value": 10, "title": "Peso: 10"}, {"from": "icyJoseph", "to": "timneutkens", "value": 26, "title": "Peso: 26"}, {"from": "graphite-app[bot]", "to": "wbinnssmith", "value": 35, "title": "Peso: 35"}, {"from": "vercel[bot]", "to": "wbinnssmith", "value": 55, "title": "Peso: 55"}, {"from": "icyJoseph", "to": "timeyoutakeit", "value": 21, "title": "Peso: 21"}, {"from": "gaojude", "to": "huozhi", "value": 22, "title": "Peso: 22"}, {"from": "icyJoseph", "to": "Strernd", "value": 21, "title": "Peso: 21"}, {"from": "graphite-app[bot]", "to": "H01001000", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "H01001000", "value": 10, "title": "Peso: 10"}, {"from": "icyJoseph", "to": "H01001000", "value": 21, "title": "Peso: 21"}, {"from": "ztanner", "to": "lubieowoce", "value": 5, "title": "Peso: 5"}, {"from": "Rezakarimzadeh98", "to": "unstubbable", "value": 11, "title": "Peso: 11"}, {"from": "devjiwonchoi", "to": "icyJoseph", "value": 11, "title": "Peso: 11"}, {"from": "thernstig", "to": "icyJoseph", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "mrjatinduggal", "value": 10, "title": "Peso: 10"}, {"from": "graphite-app[bot]", "to": "mrjatinduggal", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "georgesfarah", "value": 21, "title": "Peso: 21"}, {"from": "ijjk", "to": "vercel-release-bot", "value": 21, "title": "Peso: 21"}, {"from": "bgw", "to": "wbinnssmith", "value": 11, "title": "Peso: 11"}, {"from": "timneutkens", "to": "wbinnssmith", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "shuding", "value": 5, "title": "Peso: 5"}, {"from": "mischnic", "to": "shuding", "value": 11, "title": "Peso: 11"}, {"from": "timneutkens", "to": "unstubbable", "value": 21, "title": "Peso: 21"}, {"from": "acdlite", "to": "SukkaW", "value": 11, "title": "Peso: 11"}, {"from": "vercel[bot]", "to": "SukkaW", "value": 10, "title": "Peso: 10"}, {"from": "graphite-app[bot]", "to": "officialrajdeepsingh", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "officialrajdeepsingh", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "officialrajdeepsingh", "value": 5, "title": "Peso: 5"}, {"from": "copilot-pull-request-reviewer[bot]", "to": "huozhi", "value": 5, "title": "Peso: 5"}, {"from": "vercel[bot]", "to": "gaojude", "value": 20, "title": "Peso: 20"}, {"from": "vercel[bot]", "to": "timneutkens", "value": 20, "title": "Peso: 20"}, {"from": "allenzhou101", "to": "icyJoseph", "value": 11, "title": "Peso: 11"}, {"from": "vercel[bot]", "to": "wyattjoh", "value": 40, "title": "Peso: 40"}, {"from": "graphite-app[bot]", "to": "wyattjoh", "value": 5, "title": "Peso: 5"}, {"from": "gnoff", "to": "wyattjoh", "value": 22, "title": "Peso: 22"}, {"from": "timneutkens", "to": "bgw", "value": 21, "title": "Peso: 21"}, {"from": "dofaromg", "to": "sokra", "value": 5, "title": "Peso: 5"}, {"from": "icyJoseph", "to": "allenzhou101", "value": 10, "title": "Peso: 10"}];
+        const chartData = {"types_labels": ["issue_comments", "issue_closures", "pr_comments", "pr_reviews", "pr_approvals", "pr_merges"], "types_values": [210, 58, 0, 849, 309, 58], "top_active_labels": ["icyJoseph", "rafael-tanaka", "alexfarrill", "github-actions[bot]", "Ochirsaikhan", "Linuhusainnk", "pmk1c", "unstubbable", "aymericzip", "adamsoderstrom"], "top_active_values": [107, 1, 1, 97, 1, 1, 1, 40, 1, 1], "top_popular_labels": ["artemzhdev", "01026551290", "shiqocred", "fecommunity", "gaearon", "epaynter", "dandaniel5", "agadzik", "maxscn", "Typhon0130"], "top_popular_values": [3, 8, 2, 2, 28, 2, 2, 1, 3, 4]};
+
+        // --- CONFIGURAÇÃO DO GRAFO (VIS.JS) ---
+        const nodes = new vis.DataSet(rawNodes);
+        const edges = new vis.DataSet(rawEdges);
+        const container = document.getElementById('network');
+        
+        const data = { nodes: nodes, edges: edges };
+        const options = {
+            nodes: {
+                shape: 'dot',
+                font: { color: '#fff', size: 14 },
+                borderWidth: 2,
+                shadow: true
+            },
+            edges: {
+                width: 1,
+                color: { color: '#555', highlight: '#8b5cf6', opacity: 0.6 },
+                arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+                smooth: { type: 'continuous' }
+            },
+            physics: {
+                enabled: true,
+                forceAtlas2Based: {
+                    gravitationalConstant: -26,
+                    centralGravity: 0.005,
+                    springLength: 230,
+                    springConstant: 0.18
+                },
+                maxVelocity: 146,
+                solver: 'forceAtlas2Based',
+                timestep: 0.35,
+                stabilization: { iterations: 150 }
+            },
+            interaction: {
+                hover: true,
+                tooltipDelay: 200,
+                hideEdgesOnDrag: true
+            }
+        };
+
+        const network = new vis.Network(container, data, options);
+
+        // Funções de Interatividade
+        function togglePhysics() {
+            const status = document.getElementById('physicsToggle').checked;
+            network.setOptions({ physics: { enabled: status } });
+        }
+
+        function filterNetwork() {
+            const minWeight = parseInt(document.getElementById('weightFilter').value);
+            document.getElementById('weightVal').innerText = minWeight;
+            
+            const newEdges = rawEdges.filter(e => e.value >= minWeight);
+            edges.clear();
+            edges.add(newEdges);
+        }
+
+        // Evento de Clique no Nó
+        network.on("click", function (params) {
+            if (params.nodes.length > 0) {
+                const nodeId = params.nodes[0];
+                const node = nodes.get(nodeId);
+                console.log('Nó selecionado:', node);
+                // Você poderia adicionar lógica aqui para mostrar detalhes laterais
+            }
+        });
+
+        // --- CHART.JS CONFIG ---
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+
+        // 1. Gráfico de Pizza (Tipos)
+        new Chart(document.getElementById('typeChart'), {
+            type: 'doughnut',
+            data: {
+                labels: chartData.types_labels,
+                datasets: [{
+                    data: chartData.types_values,
+                    backgroundColor: ['#6366f1', '#8b5cf6', '#ec4899', '#14b8a6', '#f59e0b'],
+                    borderWidth: 0
+                }]
+            },
+            options: { plugins: { legend: { display: false } } }
+        });
+
+        // 2. Gráfico Barras (Ativos)
+        new Chart(document.getElementById('activeChart'), {
+            type: 'bar',
+            data: {
+                labels: chartData.top_active_labels,
+                datasets: [{
+                    label: 'Interações',
+                    data: chartData.top_active_values,
+                    backgroundColor: '#6366f1',
+                    borderRadius: 5
+                }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+
+        // 3. Gráfico Barras (Populares)
+        new Chart(document.getElementById('popularChart'), {
+            type: 'bar',
+            data: {
+                labels: chartData.top_popular_labels,
+                datasets: [{
+                    label: 'Recebidas',
+                    data: chartData.top_popular_values,
+                    backgroundColor: '#14b8a6',
+                    borderRadius: 5
+                }]
+            },
+            options: { indexAxis: 'y', plugins: { legend: { display: false } } }
+        });
+
+    </script>
+</body>
+</html>
+        

@@ -4,7 +4,7 @@ Análise de repositório GitHub utilizando teoria dos grafos para modelar intera
 
 ## 👥 Grupo
 
-- **Charles Moreira** - Matrícula XXXXXX
+- **Charles Meira** - Matrícula 824137
 - **Guilherme Meireles** - Matrícula 501153
 - **Paulo Dimas** - Matrícula 837643
 - **Pedro Rocha Resende** - Matrícula 775969

@@ -9,7 +9,7 @@ Análise de repositório GitHub utilizando teoria dos grafos para modelar intera
 - **Paulo Dimas** - Matrícula 837643
 - **Pedro Rocha Resende** - Matrícula 775969
 - **Talita Justo** - Matrícula 835212
-- **Rafael Henrique** - Matrícula XXXXXX
+- **Rafael Henrique** - Matrícula 838390
 
 ## 📊 Repositório Analisado
 

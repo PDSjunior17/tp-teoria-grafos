@@ -51,6 +51,12 @@ javac -encoding UTF-8 graph/*.java
 java graph.Main
 
 ```
+Etapa 3:
+```bash 
+# Executar analysis.py APÓS EXECUÇÂO DA ETAPA 1!
+python analysis.py
+
+```
 ## 🛠️ Tecnologias
 
 - Python 3.10+
